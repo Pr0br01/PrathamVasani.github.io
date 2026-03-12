@@ -494,25 +494,32 @@ function initContactForm() {
             return;
         }
         
-        // Simulate form submission
         const submitButton = contactForm.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
-        
+
         submitButton.disabled = true;
         submitButton.textContent = 'Sending...';
-        
-        // Simulate API call
-        setTimeout(() => {
-            // Reset form
-            contactForm.reset();
-            
-            // Show success message
-            alert('Thank you for your message! This is a demo form, so no actual message was sent.');
-            
-            // Reset button
+
+        fetch('https://formspree.io/f/xnnqpwgv', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: new FormData(contactForm)
+        })
+        .then(response => {
+            if (response.ok) {
+                contactForm.reset();
+                alert('Message sent! I\'ll get back to you soon.');
+            } else {
+                alert('Something went wrong. Please try again or email me directly at vasanipratham5@gmail.com');
+            }
+        })
+        .catch(() => {
+            alert('Network error. Please email me directly at vasanipratham5@gmail.com');
+        })
+        .finally(() => {
             submitButton.disabled = false;
             submitButton.textContent = originalText;
-        }, 2000);
+        });
     });
 }
 

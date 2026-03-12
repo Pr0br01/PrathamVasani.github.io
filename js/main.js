@@ -286,20 +286,25 @@ function initSecurityDashboard() {
     // Threat counter animation
     const threatCounter = document.getElementById('threats-counter');
     if (threatCounter) {
-        let count = 0;
-        const targetCount = 157;
-        const duration = 3000; // ms
-        const interval = 30; // ms
-        const increment = Math.ceil(targetCount / (duration / interval));
-        
-        const counterInterval = setInterval(() => {
-            count += increment;
-            if (count >= targetCount) {
-                count = targetCount;
-                clearInterval(counterInterval);
-            }
-            threatCounter.textContent = count;
-        }, interval);
+        function animateToRandom() {
+            const targetCount = Math.floor(Math.random() * 21) + 40; // 40–60
+            const duration = 3000; // ms
+            const interval = 30; // ms
+            const increment = Math.ceil(targetCount / (duration / interval));
+            let count = 0;
+
+            const counterInterval = setInterval(() => {
+                count += increment;
+                if (count >= targetCount) {
+                    count = targetCount;
+                    clearInterval(counterInterval);
+                }
+                threatCounter.textContent = count;
+            }, interval);
+        }
+
+        animateToRandom();
+        setInterval(animateToRandom, 4000);
     }
     
     // Security logs animation

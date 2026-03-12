@@ -478,42 +478,87 @@ function initSkillBars() {
 function initContactForm() {
     const contactForm = document.getElementById('contactForm');
     if (!contactForm) return;
-    
-    contactForm.addEventListener('submit', function(e) {
+
+    let lastSubmit = 0;
+
+    contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        // Get form values
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
-        const subject = document.getElementById('subject').value;
-        const message = document.getElementById('message').value;
-        
-        // Validate form (simple validation)
-        if (!name || !email || !subject || !message) {
-            alert('Please fill in all fields');
+
+        // Honeypot: silently reject bots
+        const honeypot = contactForm.querySelector('input[name="_gotcha"]');
+        if (honeypot && honeypot.value) return;
+
+        // Client-side rate limiting (30s cooldown)
+        const now = Date.now();
+        if (now - lastSubmit < 30000) {
+            showFormMessage('Please wait before sending another message.', 'error');
             return;
         }
-        
-        // Simulate form submission
+
+        // Sanitize: strip HTML tags and trim, enforce length limits
+        const sanitize = (str, max) => str.replace(/<[^>]*>/g, '').trim().slice(0, max);
+
+        const name    = sanitize(document.getElementById('name').value, 100);
+        const email   = sanitize(document.getElementById('email').value, 254);
+        const subject = sanitize(document.getElementById('subject').value, 200);
+        const message = sanitize(document.getElementById('message').value, 2000);
+
+        // Validate required fields
+        if (!name || !email || !subject || !message) {
+            showFormMessage('Please fill in all fields.', 'error');
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showFormMessage('Please enter a valid email address.', 'error');
+            return;
+        }
+
         const submitButton = contactForm.querySelector('button[type="submit"]');
-        const originalText = submitButton.textContent;
-        
         submitButton.disabled = true;
         submitButton.textContent = 'Sending...';
-        
-        // Simulate API call
-        setTimeout(() => {
-            // Reset form
-            contactForm.reset();
-            
-            // Show success message
-            alert('Thank you for your message! This is a demo form, so no actual message was sent.');
-            
-            // Reset button
+
+        try {
+            const response = await fetch('https://formspree.io/f/xwvroyab', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ name, email, subject, message })
+            });
+
+            if (response.ok) {
+                lastSubmit = Date.now();
+                contactForm.reset();
+                showFormMessage("Message sent! I'll get back to you soon.", 'success');
+            } else {
+                showFormMessage('Something went wrong. Please try again later.', 'error');
+            }
+        } catch (err) {
+            showFormMessage('Network error. Please check your connection.', 'error');
+        } finally {
             submitButton.disabled = false;
-            submitButton.textContent = originalText;
-        }, 2000);
+            submitButton.textContent = 'Send Message';
+        }
     });
+}
+
+function showFormMessage(text, type) {
+    const existing = document.getElementById('formStatusMsg');
+    if (existing) existing.remove();
+
+    const msg = document.createElement('p');
+    msg.id = 'formStatusMsg';
+    msg.textContent = text; // textContent — XSS safe, never innerHTML
+    msg.style.cssText = type === 'success'
+        ? 'color:#00ff88;margin-top:12px;font-size:0.9rem;'
+        : 'color:#ff4444;margin-top:12px;font-size:0.9rem;';
+
+    document.getElementById('contactForm').appendChild(msg);
+    setTimeout(() => msg.remove(), 5000);
 }
 
 /**

@@ -478,41 +478,76 @@ function initSkillBars() {
 function initContactForm() {
     const contactForm = document.getElementById('contactForm');
     if (!contactForm) return;
-    
+
+    const RATE_LIMIT_MS = 60000; // max 1 submission per minute
+    let lastSubmitTime = 0;
+
+    const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
+
     contactForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        // Get form values
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
-        const subject = document.getElementById('subject').value;
-        const message = document.getElementById('message').value;
-        
-        // Validate form (simple validation)
-        if (!name || !email || !subject || !message) {
-            alert('Please fill in all fields');
+
+        // Honeypot: bots fill the hidden field — drop silently
+        const honeypot = contactForm.querySelector('input[name="_gotcha"]');
+        if (honeypot && honeypot.value) return;
+
+        // Client-side rate limiting
+        const now = Date.now();
+        if (now - lastSubmitTime < RATE_LIMIT_MS) {
+            alert('Please wait a moment before sending another message.');
             return;
         }
-        
-        // Simulate form submission
+
+        const name    = document.getElementById('name').value.trim();
+        const email   = document.getElementById('email').value.trim();
+        const subject = document.getElementById('subject').value.trim();
+        const message = document.getElementById('message').value.trim();
+
+        if (!name || !email || !subject || !message) {
+            alert('Please fill in all fields.');
+            return;
+        }
+
+        // Length guards (mirrors HTML maxlength attributes)
+        if (name.length > 100 || subject.length > 150 || message.length > 2000 || email.length > 254) {
+            alert('One or more fields exceed the maximum allowed length.');
+            return;
+        }
+
+        if (!EMAIL_RE.test(email)) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+
         const submitButton = contactForm.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
-        
+
         submitButton.disabled = true;
         submitButton.textContent = 'Sending...';
-        
-        // Simulate API call
-        setTimeout(() => {
-            // Reset form
-            contactForm.reset();
-            
-            // Show success message
-            alert('Thank you for your message! This is a demo form, so no actual message was sent.');
-            
-            // Reset button
+        lastSubmitTime = now;
+
+        fetch('https://formspree.io/f/xnnqpwgv', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: new FormData(contactForm)
+        })
+        .then(response => {
+            if (response.ok) {
+                contactForm.reset();
+                alert('Message sent! I\'ll get back to you soon.');
+            } else {
+                lastSubmitTime = 0; // allow retry on server error
+                alert('Something went wrong. Please try again or email me directly at vasanipratham5@gmail.com');
+            }
+        })
+        .catch(() => {
+            lastSubmitTime = 0;
+            alert('Network error. Please email me directly at vasanipratham5@gmail.com');
+        })
+        .finally(() => {
             submitButton.disabled = false;
             submitButton.textContent = originalText;
-        }, 2000);
+        });
     });
 }
 

@@ -476,63 +476,35 @@ function initSkillBars() {
  * Contact Form Functionality
  */
 function initContactForm() {
-    const contactForm = document.getElementById('contactForm');
-    if (!contactForm) return;
+    const form = document.getElementById('contactForm');
+    if (!form) return;
 
-    let lastSubmit = 0;
-
-    contactForm.addEventListener('submit', async function(e) {
+    form.addEventListener('submit', async function(e) {
         e.preventDefault();
 
-        // Honeypot: silently reject bots
-        const honeypot = contactForm.querySelector('input[name="_gotcha"]');
-        if (honeypot && honeypot.value) return;
+        const name    = document.getElementById('name').value.trim();
+        const email   = document.getElementById('email').value.trim();
+        const subject = document.getElementById('subject').value.trim();
+        const message = document.getElementById('message').value.trim();
 
-        // Client-side rate limiting (30s cooldown)
-        const now = Date.now();
-        if (now - lastSubmit < 30000) {
-            showFormMessage('Please wait before sending another message.', 'error');
-            return;
-        }
-
-        // Sanitize: strip HTML tags and trim, enforce length limits
-        const sanitize = (str, max) => str.replace(/<[^>]*>/g, '').trim().slice(0, max);
-
-        const name    = sanitize(document.getElementById('name').value, 100);
-        const email   = sanitize(document.getElementById('email').value, 254);
-        const subject = sanitize(document.getElementById('subject').value, 200);
-        const message = sanitize(document.getElementById('message').value, 2000);
-
-        // Validate required fields
         if (!name || !email || !subject || !message) {
             showFormMessage('Please fill in all fields.', 'error');
             return;
         }
 
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            showFormMessage('Please enter a valid email address.', 'error');
-            return;
-        }
-
-        const submitButton = contactForm.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Sending...';
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
 
         try {
             const response = await fetch('https://formspree.io/f/xwvroyab', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({ name, email, subject, message })
             });
 
             if (response.ok) {
-                lastSubmit = Date.now();
-                contactForm.reset();
+                form.reset();
                 showFormMessage("Message sent! I'll get back to you soon.", 'success');
             } else {
                 showFormMessage('Something went wrong. Please try again later.', 'error');
@@ -540,8 +512,8 @@ function initContactForm() {
         } catch (err) {
             showFormMessage('Network error. Please check your connection.', 'error');
         } finally {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Send Message';
+            btn.disabled = false;
+            btn.textContent = 'Send Message';
         }
     });
 }
@@ -552,7 +524,7 @@ function showFormMessage(text, type) {
 
     const msg = document.createElement('p');
     msg.id = 'formStatusMsg';
-    msg.textContent = text; // textContent — XSS safe, never innerHTML
+    msg.textContent = text;
     msg.style.cssText = type === 'success'
         ? 'color:#00ff88;margin-top:12px;font-size:0.9rem;'
         : 'color:#ff4444;margin-top:12px;font-size:0.9rem;';
